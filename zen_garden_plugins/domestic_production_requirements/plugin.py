@@ -32,14 +32,12 @@ config: dict[str, Any] = {"test_setting": "default_value"}
 def add_domestic_production_requirements(model_schema: ModelSchema) -> None:
 
     model_schema.element_type_classes["Carrier"].own_parameters.append(TransportLimitIn)
-    model_schema.element_type_classes["Carrier"].own_parameters.append(TransportLimitOut)
-    model_schema.element_type_classes["Carrier"].own_parameters.append(TransportLimitNet)
     model_schema.element_type_classes["Carrier"].parameters.append(TransportLimitIn)
-    model_schema.element_type_classes["Carrier"].parameters.append(TransportLimitOut)
-    model_schema.element_type_classes["Carrier"].parameters.append(TransportLimitNet)
-    model_schema.element_type_classes["Carrier"].constraints.append(NetTransportLimitConstraint)
 
-    print(
-        f"Hello. This is the plugin speaking. I am printing the"
-        f" config setting 'test_setting': {config['test_setting']}"
-    )
+    model_schema.element_type_classes["Carrier"].own_parameters.append(TransportLimitOut)
+    model_schema.element_type_classes["Carrier"].parameters.append(TransportLimitOut)
+
+    model_schema.element_type_classes["Carrier"].own_parameters.append(TransportLimitNet)
+    model_schema.element_type_classes["Carrier"].parameters.append(TransportLimitNet)
+
+    model_schema.element_type_classes["Carrier"].constraints.append(NetTransportLimitConstraint)
