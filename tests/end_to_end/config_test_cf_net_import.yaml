@@ -1,0 +1,5 @@
+solver:
+  keep_files: false
+  save_duals: true
+plugins:
+  domestic_production_requirements: {}
