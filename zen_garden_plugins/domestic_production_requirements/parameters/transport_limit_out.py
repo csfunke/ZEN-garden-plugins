@@ -7,8 +7,8 @@ class TransportLimitOut(GenericParameter):
     """
 
     name = "transport_limit_out"
-    indices = ("set_carriers", "set_nodes", "set_time_steps_yearly")
-    description = (
+    indices = ("set_carriers", "set_nodes", "set_years")
+    doc = (
         "Parameter which specifies the transport limit out of the node "
         "over the course of a year"
     )

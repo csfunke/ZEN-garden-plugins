@@ -37,9 +37,11 @@ def _load_plugin_with_fake_events(monkeypatch):
     monkeypatch.setitem(sys.modules, "zen_garden", zen_garden)
     monkeypatch.setitem(sys.modules, "zen_garden.plugin_system", plugin_system)
     monkeypatch.setitem(sys.modules, "zen_garden.plugin_system.events", events)
-    monkeypatch.delitem(sys.modules, "plugin_template.plugin", raising=False)
+    monkeypatch.delitem(
+        sys.modules, "zen_garden_plugins.plugin_template.plugin", raising=False
+    )
 
-    module = importlib.import_module("plugin_template.plugin")
+    module = importlib.import_module("zen_garden_plugins.plugin_template.plugin")
     return module, Event, calls
 
 

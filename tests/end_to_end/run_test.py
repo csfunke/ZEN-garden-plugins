@@ -194,22 +194,23 @@ def test_1a(folder_path):
     # test also whether config and dataset can take just file name in cwd
     cwd = os.getcwd()
     os.chdir(folder_path)
+    try:
+        # run the test
+        data_set_name = "test_1a"
+        run(
+            config="config_duals.yaml",
+            dataset=data_set_name,
+        )
 
-    # run the test
-    data_set_name = "test_1a"
-    run(
-        config=os.path.join("config_duals.yaml"),
-        dataset=os.path.join(data_set_name),
-    )
-
-    # read the results and check again
-    res = Results(os.path.join("outputs", data_set_name))
-    compare_variables_results(data_set_name, res, folder_path)
-    # test functions get_total() and get_full_ts()
-    check_get_total_get_full_ts(res)
-    # test sectoral costs and emissions
-    check_sectoral_costs_emissions(res, spatially_resolved=True)
-    os.chdir(cwd)
+        # read the results and check again
+        res = Results(os.path.join("outputs", data_set_name))
+        compare_variables_results(data_set_name, res, folder_path)
+        # test functions get_total() and get_full_ts()
+        check_get_total_get_full_ts(res)
+        # test sectoral costs and emissions
+        check_sectoral_costs_emissions(res, spatially_resolved=True)
+    finally:
+        os.chdir(cwd)
 
 
 def test_cf_net_imports(folder_path):
@@ -227,4 +228,4 @@ def test_cf_net_imports(folder_path):
 
 if __name__ == "__main__":
     testcase_folder = os.path.dirname(__file__)
-    test_1a(testcase_folder)
+    test_cf_net_imports(testcase_folder)
