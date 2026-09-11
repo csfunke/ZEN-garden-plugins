@@ -4,6 +4,7 @@ channels:
 dependencies:
   - pip
   - python=3.13
+  - uv
   - pip:
       - -e .[dev,docs]
 
@@ -13,7 +14,7 @@ dependencies:
 # To install zen-garden in editable mode (after initial environment creation)
 # cd path/to/zen-garden
 # conda activate zen-garden-plugins-env
-# pip install -e .[dev,docs]
+# uv pip install -e .[dev,docs]
 
 # To remove
-# conda remove -name zen-garden-plugins-env --all
+# conda remove --name zen-garden-plugins-env --all
