@@ -47,7 +47,7 @@ transport_loss_factor_linear:
   default_value: 0
   unit: 1/km
 capex_per_distance_transport:
-  default_value: 265.0
+  default_value: 0.0
   unit: Euro/km/MW
 distance:
   default_value: inf

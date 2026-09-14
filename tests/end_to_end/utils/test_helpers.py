@@ -5,27 +5,16 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
-import pytest
 import yaml
-from zen_garden import Results, compare_configs, compare_model_values, run
-
-# fixtures
-##########
+from zen_garden import Results, compare_configs, compare_model_values
 
 
-@pytest.fixture
-def folder_path():
-    """
-    :return: Returns the path of the testcase folder
-    """
-    return os.path.dirname(__file__)
-
-
-# helper functions
-##################
-
-
-def compare_variables_results(test_model: str, results: Results, folder_path: str):
+def compare_variables_results(
+    test_model: str,
+    results: Results,
+    folder_path: str,
+    test_variables_file_name: str,
+):
     """
     Compares the variables of a Results object from the test run to precomputed
     values.
@@ -35,16 +24,13 @@ def compare_variables_results(test_model: str, results: Results, folder_path: st
         results: The Results object
         folder_path: The path to the folder containing the file with the
             correct variables
+        test_variables_file_name: The name of the file containing the correct
+            variables
     """
-    # import json file containing selected variable values of test model
-    # collection
-    with open(os.path.join(folder_path, "test_variables.yaml")) as f:
+    with open(os.path.join(folder_path, test_variables_file_name)) as f:
         test_variables = yaml.safe_load(f)
-    # dictionary to store variable names, indices, values and test values of
-    # variables which don't match the test values
     failed_variables: defaultdict[str, dict[Any, Any]] = defaultdict(dict)
     compare_counter = 0
-    # iterate through dataframe rows
     if test_model in test_variables:
         for s in test_variables[test_model]:
             if s in results.scenarios:
@@ -80,7 +66,6 @@ def compare_variables_results(test_model: str, results: Results, folder_path: st
                         print(f"Component {c} not found in results")
             else:
                 print(f"Scenario {s} not found in results")
-    # create the string of all failed variables
     assertion_string = ""
     for failed_var, failed_value in failed_variables.items():
         assertion_string += f"\n{failed_var}: {failed_value}"
@@ -92,7 +77,7 @@ def compare_variables_results(test_model: str, results: Results, folder_path: st
         warnings.warn(
             UserWarning(
                 f"No variables have been compared in {test_model}. If not "
-                f"intended, check the test_variables.yaml file."
+                f"intended, check the {test_variables_file_name} file."
             ),
             stacklevel=2,
         )
@@ -105,17 +90,7 @@ def check_get_total_get_full_ts(
     discount_to_first_step=True,
     get_doc=False,
 ):
-    """
-    Tests the functionality of the Results methods get_total() and get_full_ts().
-
-    Args:
-        get_doc:
-        discount_to_first_step: Apply annuity to first year of interval or
-            entire interval
-        year: Specific year
-        specific_scenario: Specific scenario
-        results: Results instance of testcase function has been called from
-    """
+    """Tests the Results methods get_total() and get_full_ts()."""
     test_variables = ["demand", "capacity", "storage_level", "capacity_limit"]
     scenario = None
     if specific_scenario:
@@ -134,16 +109,10 @@ def check_get_total_get_full_ts(
 
 
 def check_comparison_functions(results: list[Results], scenarios: list[str]):
-    """
-    Tests the functionality of the Results comparison functions.
-
-    Args:
-        results: List of Results instances
-        scenarios: List of scenario names
-    """
-    _cc = compare_configs(results, scenarios)
-    _cp = compare_model_values(results, component_type="parameter", scenarios=scenarios)
-    _cv = compare_model_values(
+    """Tests the Results comparison functions."""
+    compare_configs(results, scenarios)
+    compare_model_values(results, component_type="parameter", scenarios=scenarios)
+    compare_model_values(
         results, component_type="variable", scenarios=scenarios, compare_total=False
     )
 
@@ -153,15 +122,7 @@ def check_sectoral_costs_emissions(
     scenario_name: str | None = None,
     spatially_resolved: bool = False,
 ):
-    """
-    Tests the functionality of the Results methods get_sectoral_costs() and
-    get_sectoral_emissions().
-
-    Args:
-        results: Results instance of testcase function has been called from
-        scenario_name: Name of the scenario to test
-        spatially_resolved: Whether to return spatially resolved data
-    """
+    """Tests the Results methods get_sectoral_costs() and get_sectoral_emissions()."""
     costs, direct_costs = results.get_sectoral_costs(
         scenario_name=scenario_name,
         spatially_resolved=spatially_resolved,
@@ -184,48 +145,3 @@ def check_sectoral_costs_emissions(
         assert np.isclose(
             total_emissions, emissions.sum(), rtol=1e-3
         ).all(), "Total emissions do not match the sum of sectoral emissions"
-
-
-# All the tests
-###############
-def test_1a(folder_path):
-    # add duals for this test
-
-    # test also whether config and dataset can take just file name in cwd
-    cwd = os.getcwd()
-    os.chdir(folder_path)
-    try:
-        # run the test
-        data_set_name = "test_1a"
-        run(
-            config="config_duals.yaml",
-            dataset=data_set_name,
-        )
-
-        # read the results and check again
-        res = Results(os.path.join("outputs", data_set_name))
-        compare_variables_results(data_set_name, res, folder_path)
-        # test functions get_total() and get_full_ts()
-        check_get_total_get_full_ts(res)
-        # test sectoral costs and emissions
-        check_sectoral_costs_emissions(res, spatially_resolved=True)
-    finally:
-        os.chdir(cwd)
-
-
-def test_cf_net_imports(folder_path):
-    # run the test
-    data_set_name = "test_cf_net_import"
-    run(
-        config=os.path.join(folder_path, "config_test_cf_net_import.yaml"),
-        dataset=os.path.join(folder_path, data_set_name),
-        folder_output=os.path.join(folder_path, "outputs"),
-    )
-    # read the results and check again
-    # res = Results(os.path.join(folder_path, "outputs", data_set_name))
-    # compare_variables_results(data_set_name, res, folder_path)
-
-
-if __name__ == "__main__":
-    testcase_folder = os.path.dirname(__file__)
-    test_cf_net_imports(testcase_folder)

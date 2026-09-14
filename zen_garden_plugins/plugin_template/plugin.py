@@ -18,7 +18,7 @@ config: dict[str, Any] = {"any_setting": "value_of_any_setting"}
 
 
 # Choose the event that will trigger the function call
-@EventPublisher.register(Event.after_model_construction)
+@EventPublisher.register(Event.after_model_schema_creation)
 def function_to_be_called_at_test_event1(*args, **kwargs):
     """This function will be called when the execution reaches the trigger to the event.
 
@@ -27,11 +27,11 @@ def function_to_be_called_at_test_event1(*args, **kwargs):
     Make sure the function signature matches with event trigger in ZEN-garden:
 
     for e.g.:
-    ``EventPublisher.trigger(Event.after_model_construction,
-    optimization_setup=optimization_setup)``
+    ``EventPublisher.trigger(Event.after_model_schema_creation,
+    model_schema=model_schema)``
 
     the function definition has to be:
-    ``def function_to_be_called_at_after_model_construction(optimization_setup):``
+    ``def function_to_be_called_at_after_model_schema_creation(model_schema):``
 
     """
     print(

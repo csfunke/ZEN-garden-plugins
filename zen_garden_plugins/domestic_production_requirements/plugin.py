@@ -34,10 +34,16 @@ def add_domestic_production_requirements(model_schema: ModelSchema) -> None:
     model_schema.element_type_classes["Carrier"].own_parameters.append(TransportLimitIn)
     model_schema.element_type_classes["Carrier"].parameters.append(TransportLimitIn)
 
-    model_schema.element_type_classes["Carrier"].own_parameters.append(TransportLimitOut)
+    model_schema.element_type_classes["Carrier"].own_parameters.append(
+        TransportLimitOut
+    )
     model_schema.element_type_classes["Carrier"].parameters.append(TransportLimitOut)
 
-    model_schema.element_type_classes["Carrier"].own_parameters.append(TransportLimitNet)
+    model_schema.element_type_classes["Carrier"].own_parameters.append(
+        TransportLimitNet
+    )
     model_schema.element_type_classes["Carrier"].parameters.append(TransportLimitNet)
 
-    model_schema.element_type_classes["Carrier"].constraints.append(NetTransportLimitConstraint)
+    model_schema.element_type_classes["Carrier"].constraints.append(
+        NetTransportLimitConstraint
+    )

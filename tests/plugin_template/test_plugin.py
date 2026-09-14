@@ -13,7 +13,7 @@ def _load_plugin_with_fake_events(monkeypatch):
     calls = []
 
     class Event:
-        after_model_construction = object()
+        after_model_schema_creation = object()
 
     class EventPublisher:
         @staticmethod
@@ -58,5 +58,5 @@ def test_plugin_registers_handler_for_test_event1(monkeypatch):
 
     assert len(calls) == 1
     registered_event, registered_function = calls[0]
-    assert registered_event is event.after_model_construction
+    assert registered_event is event.after_model_schema_creation
     assert registered_function is module.function_to_be_called_at_test_event1
