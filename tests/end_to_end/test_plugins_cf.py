@@ -5,7 +5,7 @@ from zen_garden import Results, run
 from tests.end_to_end.utils.test_helpers import compare_variables_results
 
 
-def test_cf_net_imports(fixtures_cf_path):
+def test_cf_net_import(fixtures_cf_path):
     # run the test
     data_set_name = "test_cf_net_import"
     run(
@@ -18,8 +18,3 @@ def test_cf_net_imports(fixtures_cf_path):
     compare_variables_results(
         data_set_name, results, fixtures_cf_path, "test_variables_cf.yaml"
     )
-
-
-if __name__ == "__main__":
-    testcase_folder = os.path.join(os.path.dirname(__file__), "fixtures_cf")
-    test_cf_net_imports(testcase_folder)
