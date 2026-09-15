@@ -5,13 +5,12 @@ Write functions that subscribe to an event in ZEN-garden. These functions are ex
 when ZEN-garden reaches the trigger to the respective event.
 """
 
-from typing import Any
 
 from zen_garden import (  # type: ignore[import-untyped]
+    ConfigBase,
     Event,
     EventPublisher,
     ModelSchema,
-    ConfigBase,
 )
 
 from zen_garden_plugins.domestic_potential_requirements.constraints import (
@@ -21,6 +20,7 @@ from zen_garden_plugins.domestic_potential_requirements.parameters import (
     BackupPotential,
     WinterLimit,
 )
+
 
 # The config can be filled with parameters to be passed to the plugin. Define default
 # parameters here. You can pass other values with the config in ZEN-garden.
@@ -34,12 +34,14 @@ class Config(ConfigBase):
     start_hour: int = 8016
     end_hour: int = 1416
 
-# config: dict[str, Any] = {"start_hour": 8016, 
+
+# config: dict[str, Any] = {"start_hour": 8016,
 #                           "end_hour"  : 1416}
 
-# Declare that a config will exist. This is added by the plugin system when the 
+# Declare that a config will exist. This is added by the plugin system when the
 # plugin is loaded.
 config: Config
+
 
 # Choose the event that will trigger the function call
 @EventPublisher.register(Event.after_model_schema_creation)

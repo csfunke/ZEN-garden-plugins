@@ -11,4 +11,3 @@ class BackupPotential(GenericParameter):
     time_series = False
     default_value = 0
     default_unit = "availability_import_yearly"
-

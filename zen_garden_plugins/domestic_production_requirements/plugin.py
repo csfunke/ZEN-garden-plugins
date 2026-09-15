@@ -5,9 +5,9 @@ Write functions that subscribe to an event in ZEN-garden. These functions are ex
 when ZEN-garden reaches the trigger to the respective event.
 """
 
-from typing import Any
 
 from zen_garden import (  # type: ignore[import-untyped]
+    ConfigBase,
     Event,
     EventPublisher,
     ModelSchema,
@@ -22,9 +22,15 @@ from zen_garden_plugins.domestic_production_requirements.parameters import (
     TransportLimitOut,
 )
 
+
 # The config can be filled with parameters to be passed to the plugin. Define default
 # parameters here. You can pass other values with the config in ZEN-garden.
-config: dict[str, Any] = {"test_setting": "default_value"}
+class Config(ConfigBase):
+    """
+    Configuration for the domestic production requirements plugin.
+    """
+
+    test_setting: str = "default_value"
 
 
 # Choose the event that will trigger the function call
