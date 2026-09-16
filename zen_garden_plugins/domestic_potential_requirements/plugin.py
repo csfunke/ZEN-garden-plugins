@@ -38,11 +38,6 @@ class Config(ConfigBase):
 # config: dict[str, Any] = {"start_hour": 8016,
 #                           "end_hour"  : 1416}
 
-# Declare that a config will exist. This is added by the plugin system when the
-# plugin is loaded.
-config: Config
-
-
 # Choose the event that will trigger the function call
 @EventPublisher.register(Event.after_model_schema_creation)
 def add_domestic_production_requirements(model_schema: ModelSchema) -> None:

@@ -36,8 +36,3 @@ def test_1a(fixtures_path):
         check_sectoral_costs_emissions(res, spatially_resolved=True)
     finally:
         os.chdir(cwd)
-
-
-if __name__ == "__main__":
-    testcase_folder = os.path.join(os.path.dirname(__file__), "fixtures")
-    test_1a(testcase_folder)

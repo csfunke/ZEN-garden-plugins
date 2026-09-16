@@ -1,6 +1,9 @@
 import importlib
 import sys
 import types
+from types import SimpleNamespace
+
+from zen_garden import ConfigBase
 
 
 def _load_plugin_with_fake_events(monkeypatch):
@@ -24,19 +27,16 @@ def _load_plugin_with_fake_events(monkeypatch):
 
             return decorator
 
-    zen_garden = types.ModuleType("zen_garden")
-    plugin_system = types.ModuleType("zen_garden.plugin_system")
-    events = types.ModuleType("zen_garden.plugin_system.events")
-    events.Event = Event
-    events.EventPublisher = EventPublisher
+    class ModelSchema:
+        pass
 
-    # Build the module chain expected by plugin_template.plugin imports.
-    zen_garden.plugin_system = plugin_system
-    plugin_system.events = events
+    zen_garden = types.ModuleType("zen_garden")
+    zen_garden.ConfigBase = ConfigBase
+    zen_garden.Event = Event
+    zen_garden.EventPublisher = EventPublisher
+    zen_garden.ModelSchema = ModelSchema
 
     monkeypatch.setitem(sys.modules, "zen_garden", zen_garden)
-    monkeypatch.setitem(sys.modules, "zen_garden.plugin_system", plugin_system)
-    monkeypatch.setitem(sys.modules, "zen_garden.plugin_system.events", events)
     monkeypatch.delitem(
         sys.modules, "zen_garden_plugins.plugin_template.plugin", raising=False
     )
@@ -45,11 +45,12 @@ def _load_plugin_with_fake_events(monkeypatch):
     return module, Event, calls
 
 
-def test_plugin_exposes_config_dict(monkeypatch):
-    """Test config exposed by plugin."""
+def test_plugin_exposes_config_schema_with_default(monkeypatch):
+    """Test the plugin config schema and its default value."""
     module, _event, _calls = _load_plugin_with_fake_events(monkeypatch)
 
-    assert isinstance(module.config, dict)
+    assert issubclass(module.Config, ConfigBase)
+    assert module.Config().any_setting == "value_of_any_setting"
 
 
 def test_plugin_registers_handler_for_test_event1(monkeypatch):
@@ -60,3 +61,17 @@ def test_plugin_registers_handler_for_test_event1(monkeypatch):
     registered_event, registered_function = calls[0]
     assert registered_event is event.after_model_schema_creation
     assert registered_function is module.function_to_be_called_at_test_event1
+
+
+def test_plugin_handler_reads_config_from_model_schema(monkeypatch, capsys):
+    """Test the handler reads the validated config from the model schema."""
+    module, _event, _calls = _load_plugin_with_fake_events(monkeypatch)
+    model_schema = SimpleNamespace(
+        config=SimpleNamespace(
+            plugins={"plugin_template": {"any_setting": "configured_value"}}
+        )
+    )
+
+    module.function_to_be_called_at_test_event1(model_schema)
+
+    assert "config setting 'any_setting': configured_value" in capsys.readouterr().out
