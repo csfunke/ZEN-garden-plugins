@@ -6,7 +6,11 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import yaml
+<<<<<<< HEAD
 from zen_garden import Results, compare_configs, compare_model_values
+=======
+from zen_garden import Results
+>>>>>>> contribute/new-plugin-structure
 
 
 def compare_variables_results(
@@ -81,6 +85,7 @@ def compare_variables_results(
             ),
             stacklevel=2,
         )
+<<<<<<< HEAD
 
 
 def check_get_total_get_full_ts(
@@ -145,3 +150,5 @@ def check_sectoral_costs_emissions(
         assert np.isclose(
             total_emissions, emissions.sum(), rtol=1e-3
         ).all(), "Total emissions do not match the sum of sectoral emissions"
+=======
+>>>>>>> contribute/new-plugin-structure

@@ -67,7 +67,7 @@ jobs:
         uses: tj-actions/changed-files@v46
         with:
           files: |
-            zen_galaxies_env.yml
+            zen_garden_plugins_env.yml
 
       - name: Set Env
         # trigger if env file change or on schedule
@@ -108,7 +108,7 @@ jobs:
         with:
             miniforge-variant: Miniforge3
             miniforge-version: latest
-            activate-environment: ZEN-garden-plugins-env
+            activate-environment: zen-garden-plugins-env
             use-mamba: true
 
       # date for the cache
@@ -120,14 +120,14 @@ jobs:
       - uses: actions/cache@v3
         if: ${{ env.SKIPTESTS == 'false' }}
         with:
-          path: ${{ matrix.prefix }}
-          key: ${{ matrix.label }}-conda-${{ hashFiles('zen_galaxies_env.yml') }}-${{ env.DATE }}-${{ env.CACHE_NUMBER }}
+          path: ${{ env.CONDA }}/envs/zen-garden-plugins-env
+          key: ${{ matrix.label }}-conda-${{ hashFiles('zen_garden_plugins_env.yml') }}-${{ env.DATE }}-${{ env.CACHE_NUMBER }}
         id: cache
 
       # This step is cached in case the env file was not changed
-      - name: Update environment
+      - name: Create environment
         if: ${{ env.SKIPTESTS == 'false' && steps.cache.outputs.cache-hit != 'true'}}
-        run: mamba env update -f zen_galaxies_env.yml
+        run: mamba env create -f zen_garden_plugins_env.yml
 
       - name: Install package
         if: ${{ env.SKIPTESTS == 'false' }}
@@ -138,7 +138,7 @@ jobs:
         if: ${{ env.SKIPTESTS == 'false' }}
         shell: bash -l {0}
         run: |
-          pytest --cov="zen_galaxies" -n auto tests/ -v
+          pytest --cov="zen_garden_plugins" -n auto tests/ -v
 #          coverage report -m
 
     #   - name: Extract Coverage
