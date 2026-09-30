@@ -6,11 +6,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 import yaml
-<<<<<<< HEAD
-from zen_garden import Results, compare_configs, compare_model_values
-=======
 from zen_garden import Results
->>>>>>> contribute/new-plugin-structure
 
 
 def compare_variables_results(
@@ -85,70 +81,3 @@ def compare_variables_results(
             ),
             stacklevel=2,
         )
-<<<<<<< HEAD
-
-
-def check_get_total_get_full_ts(
-    results: Results,
-    specific_scenario=False,
-    year=None,
-    discount_to_first_step=True,
-    get_doc=False,
-):
-    """Tests the Results methods get_total() and get_full_ts()."""
-    test_variables = ["demand", "capacity", "storage_level", "capacity_limit"]
-    scenario = None
-    if specific_scenario:
-        scenario = next(iter(results.scenarios.keys()))
-    for test_variable in test_variables:
-        results.get_total(test_variable, scenario_name=scenario, year=year)
-        if test_variable != "capacity_limit":
-            results.get_full_ts(
-                test_variable,
-                scenario_name=scenario,
-                year=year,
-                discount_to_first_step=discount_to_first_step,
-            )
-    if get_doc:
-        results.get_doc(test_variables[0])
-
-
-def check_comparison_functions(results: list[Results], scenarios: list[str]):
-    """Tests the Results comparison functions."""
-    compare_configs(results, scenarios)
-    compare_model_values(results, component_type="parameter", scenarios=scenarios)
-    compare_model_values(
-        results, component_type="variable", scenarios=scenarios, compare_total=False
-    )
-
-
-def check_sectoral_costs_emissions(
-    results: Results,
-    scenario_name: str | None = None,
-    spatially_resolved: bool = False,
-):
-    """Tests the Results methods get_sectoral_costs() and get_sectoral_emissions()."""
-    costs, direct_costs = results.get_sectoral_costs(
-        scenario_name=scenario_name,
-        spatially_resolved=spatially_resolved,
-        overwrite=True,
-    )
-    emissions, direct_emissions = results.get_sectoral_emissions(
-        scenario_name=scenario_name,
-        spatially_resolved=spatially_resolved,
-        overwrite=True,
-    )
-    if "cost_total" in results.get_component_names("variable"):
-        total_costs = results.get_total("cost_total", scenario_name=scenario_name)
-        assert np.isclose(
-            total_costs, costs.sum(), rtol=1e-3
-        ).all(), "Total costs do not match the sum of sectoral costs"
-    if "carbon_emissions_annual" in results.get_component_names("variable"):
-        total_emissions = results.get_total(
-            "carbon_emissions_annual", scenario_name=scenario_name
-        )
-        assert np.isclose(
-            total_emissions, emissions.sum(), rtol=1e-3
-        ).all(), "Total emissions do not match the sum of sectoral emissions"
-=======
->>>>>>> contribute/new-plugin-structure

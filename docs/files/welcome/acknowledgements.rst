@@ -8,7 +8,7 @@ Acknowledgements
 Current Developers 
 ==================
 
-The following people have contributed to the development of ZEN-garden plugin:
+The following people have contributed to the development of ZEN-garden plugins:
 
 - Jan Wiegner (EPSE, ETH Zurich)
 - Christoph Funke (RRE, ETH Zurich)

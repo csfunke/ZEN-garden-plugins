@@ -1,8 +1,13 @@
 """
-A template for a plugin.
+Template plugin for ZEN-garden.
 
-Write functions that subscribe to an event in ZEN-garden. These functions are executed
-when ZEN-garden reaches the trigger to the respective event.
+This is a minimal working example showing how to:
+- Set up plugin configuration
+- Register a function to an event
+- Access plugin settings
+- Access the model and modify it
+
+Copy this file as a starting point for your own plugin!
 """
 
 from zen_garden import (  # type: ignore[import-untyped]
@@ -12,34 +17,58 @@ from zen_garden import (  # type: ignore[import-untyped]
     ModelSchema,
 )
 
+# ============================================================================
+# Configuration: Define what settings your plugin accepts
+# ============================================================================
 
-# The config can be filled with parameters to be passed to the plugin. Define default
-# parameters here. You can pass other values with the config in ZEN-garden.
+
 class Config(ConfigBase):
-    """Configuration for the plugin template."""
+    """Configuration for the plugin template.
 
-    any_setting: str = "value_of_any_setting"
+    Users can override these defaults in their config.yaml:
 
-
-# Choose the event that will trigger the function call
-@EventPublisher.register(Event.after_model_schema_creation)
-def function_to_be_called_at_test_event1(model_schema: ModelSchema) -> None:
-    """This function will be called when the execution reaches the trigger to the event.
-
-    You can implement e.g. new constraints or variables as a plugin which are added
-    to the model.
-    Make sure the function signature matches with event trigger in ZEN-garden:
-
-    for e.g.:
-    ``EventPublisher.trigger(Event.after_model_schema_creation,
-    model_schema=model_schema)``
-
-    the function definition has to be:
-    ``def function_to_be_called_at_after_model_schema_creation(model_schema):``
-
+        plugins:
+          plugin_template:
+            example_setting: "custom_value"
+            example_number: 42
     """
+
+    example_setting: str = "default_value"
+    example_number: int = 100
+
+
+# ============================================================================
+# Event Handler: Register a function to run at a specific point
+# ============================================================================
+
+
+@EventPublisher.register(Event.after_model_schema_creation)
+def extend_model(model_schema: ModelSchema) -> None:
+    """
+    This function runs after ZEN-garden creates the model schema.
+
+    At this point, you can:
+    - Add new variables or constraints
+    - Modify existing ones
+    - Access the configuration
+    - Access the energy system information
+
+    Args:
+        model_schema: The model schema object provided by ZEN-garden
+
+    Example of what you can do:
+        - model_schema.add_variable(...)
+        - model_schema.add_constraint(...)
+        - Access model_schema.config.plugins["plugin_template"]
+    """
+    # Get your plugin's configuration
     config = model_schema.config.plugins["plugin_template"]
-    print(
-        "Hello. This is the plugin speaking. I am printing the"
-        f" config setting 'any_setting': {config['any_setting']}"
-    )
+
+    # Access settings from config.yaml
+    example_setting = config["example_setting"]
+    example_number = config["example_number"]
+
+    # Print to verify the plugin ran and received the config
+    print(f"[Plugin Template] Example setting: {example_setting}")
+    print(f"[Plugin Template] Example number: {example_number}")
+    print("[Plugin Template] Plugin loaded successfully!")
