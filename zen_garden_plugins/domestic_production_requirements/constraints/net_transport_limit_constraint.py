@@ -220,12 +220,12 @@ class NetTransportLimitConstraint(GenericConstraint):
         constraints_out = lhs_out <= rhs_out
         constraints_net = lhs_net <= rhs_net
         # add the constraints to the model
-        model_constructor.optimization_model.add_constraint(
-            "constraint_transport_limit_in", constraints_in
+        cls.add_constraint(
+            model_constructor, "constraint_transport_limit_in", constraints_in
         )
-        model_constructor.optimization_model.add_constraint(
-            "constraint_transport_limit_out", constraints_out
+        cls.add_constraint(
+            model_constructor, "constraint_transport_limit_out", constraints_out
         )
-        model_constructor.optimization_model.add_constraint(
-            "constraint_transport_limit_net", constraints_net
+        cls.add_constraint(
+            model_constructor, "constraint_transport_limit_net", constraints_net
         )

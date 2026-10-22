@@ -24,4 +24,4 @@ class NewConstraint(GenericConstraint):
             optimization_model.variables["new_variable"]
             == optimization_model.parameters.new_parameter
         )
-        optimization_model.add_constraint("new_constraint", constraints)
+        cls.add_constraint(model_constructor, "new_constraint", constraints)

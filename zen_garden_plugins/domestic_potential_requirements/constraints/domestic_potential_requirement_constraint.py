@@ -114,8 +114,10 @@ class DomesticPotentialRequirementConstraint(GenericConstraint):
         active_constraint = np.isfinite(winter_limit) & np.isfinite(backup_potential)
         lhs = potential.where(active_constraint)
         rhs = (demand - winter_limit - backup_potential).where(active_constraint)
-        optimization_model.add_constraint(
-            "constraint_domestic_potential_requirement", lhs >= rhs
+        cls.add_constraint(
+            model_constructor,
+            "constraint_domestic_potential_requirement",
+            lhs >= rhs,
         )
 
     @staticmethod
