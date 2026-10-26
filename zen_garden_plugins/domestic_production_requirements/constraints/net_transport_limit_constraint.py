@@ -185,6 +185,16 @@ class NetTransportLimitConstraint(GenericConstraint):
                 .where(False)
                 .to_linexpr()
             )
+
+        # get carrier inflows
+        term_carrier_import = model_constructor.optimization_model.variables[
+            "flow_import"
+        ].to_linexpr()
+        term_carrier_export = model_constructor.optimization_model.variables[
+            "flow_export"
+        ].to_linexpr()
+
+
         # sum up over all operation time steps per year
         time_step_duration = cls.get_year_time_step_duration_array(model_constructor)
         term_flow_transport_in = (
@@ -195,7 +205,22 @@ class NetTransportLimitConstraint(GenericConstraint):
             term_flow_transport_out.assign_coords(time_step_duration.coords)
             * time_step_duration
         ).sum("set_time_steps_operation")
-        term_flow_transport_net = term_flow_transport_in - term_flow_transport_out
+        term_carrier_import = (
+            term_carrier_import.assign_coords(time_step_duration.coords)
+            * time_step_duration
+        ).sum("set_time_steps_operation")
+        term_carrier_export = (
+            term_carrier_export.assign_coords(time_step_duration.coords)
+            * time_step_duration
+        ).sum("set_time_steps_operation")
+
+        
+        term_flow_import_total = term_flow_transport_in - term_carrier_import
+        term_flow_export_total = term_flow_transport_out - term_carrier_export
+        term_flow_import_net = term_flow_import_total - term_flow_export_total
+
+
+
         # transport limits
         transport_limit_in = (
             model_constructor.optimization_model.parameters.transport_limit_in
@@ -210,9 +235,9 @@ class NetTransportLimitConstraint(GenericConstraint):
         mask_limit_out = transport_limit_out != np.inf
         mask_limit_net = transport_limit_net != np.inf
         # create the constraints
-        lhs_in = term_flow_transport_in.where(mask_limit_in)
-        lhs_out = term_flow_transport_out.where(mask_limit_out)
-        lhs_net = term_flow_transport_net.where(mask_limit_net)
+        lhs_in = term_flow_import_total.where(mask_limit_in)
+        lhs_out = term_flow_export_total.where(mask_limit_out)
+        lhs_net = term_flow_import_net.where(mask_limit_net)
         rhs_in = transport_limit_in.where(mask_limit_in, 0.0)
         rhs_out = transport_limit_out.where(mask_limit_out, 0.0)
         rhs_net = transport_limit_net.where(mask_limit_net, 0.0)
