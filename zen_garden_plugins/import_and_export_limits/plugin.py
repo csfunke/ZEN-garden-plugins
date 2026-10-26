@@ -25,11 +25,10 @@ from zen_garden_plugins.import_and_export_limits.parameters import (
 # The config can be filled with parameters to be passed to the plugin. Define default
 # parameters here. You can pass other values with the config in ZEN-garden.
 class Config(ConfigBase):
-    """
-    Configuration for the domestic production requirements plugin.
-    """
+    """Configuration for the import and export limits plugin."""
 
-    test_setting: str = "default_value"
+    start_hour: int = 8016
+    end_hour: int = 1416
 
 
 # Choose the event that will trigger the function call

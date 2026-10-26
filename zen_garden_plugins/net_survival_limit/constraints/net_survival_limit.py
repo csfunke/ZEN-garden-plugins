@@ -16,7 +16,7 @@ class NetSurvivalLimitConstraint(GenericConstraint):
         year_time_step_duration = cls.get_year_time_step_duration_array(
             model_constructor
         )
-        winter_duration = cls._get_winter_representative_durations(
+        winter_duration = cls._get_selected_representative_durations(
             model_constructor, times, year_time_step_duration
         )
 
@@ -82,7 +82,7 @@ class NetSurvivalLimitConstraint(GenericConstraint):
 
                 initial_storage_terms = []
                 for year in optimization_model.sets["set_years"]:
-                    initial_storage_time = cls._get_winter_start_storage_time(
+                    initial_storage_time = cls._get_start_storage_time(
                         model_constructor, year
                     )
                     initial_storage_terms.append(
@@ -121,42 +121,42 @@ class NetSurvivalLimitConstraint(GenericConstraint):
         )
 
     @staticmethod
-    def _get_winter_representative_durations(
+    def _get_selected_representative_durations(
         model_constructor, representative_times, year_time_step_duration
     ):
-        """Return the winter duration of each representative hour per model year.
-
-        A representative hour can stand for both winter and non-winter hours. Its
-        winter duration is therefore the number of its occurrences that fall in
-        winter, rather than its full annual duration or a Boolean winter mask.
-        """
+        """Return representative-hour durations within the configured time frame."""
         sequence_time_steps = model_constructor.time_steps.sequence_time_steps_operation
         sequence_years = model_constructor.time_steps.sequence_time_steps_yearly
-        operation_time_dimension = representative_times.dims[0]
+        if sequence_time_steps is None or sequence_years is None:
+            raise RuntimeError(
+                "Operational time-step and yearly sequences are required to apply "
+                "the net survival limit to a selected time frame."
+            )
+
         config = model_constructor.model_schema.config.plugins["net_survival_limit"]
         start_hour = config["start_hour"]
         end_hour = config["end_hour"]
-
-        if sequence_time_steps is None or sequence_years is None:
-            raise RuntimeError("The code for this feature has not been tested yet")
-
         sequence_time_steps = np.asarray(sequence_time_steps)
         sequence_years = np.asarray(sequence_years)
         years = year_time_step_duration.coords["set_years"]
+        operation_time_dimension = representative_times.dims[0]
         durations = np.zeros((len(years), len(representative_times)), dtype=float)
 
         for year_index, year in enumerate(years.data):
             year_sequence = sequence_time_steps[sequence_years == year]
             hours = np.arange(len(year_sequence))
-            assert len(hours) == 8760, "The number of hours in a year should be 8760."
+            if len(hours) != 8760:
+                raise ValueError(
+                    f"Year {year} has {len(hours)} operational hours; expected 8760."
+                )
             if start_hour <= end_hour:
-                actual_winter = (hours >= start_hour) & (hours < end_hour)
+                selected_hours = (hours >= start_hour) & (hours < end_hour)
             else:
-                actual_winter = (hours >= start_hour) | (hours < end_hour)
-            winter_times, winter_counts = np.unique(
-                year_sequence[actual_winter], return_counts=True
+                selected_hours = (hours >= start_hour) | (hours < end_hour)
+            selected_times, selected_counts = np.unique(
+                year_sequence[selected_hours], return_counts=True
             )
-            counts_by_time = dict(zip(winter_times, winter_counts, strict=True))
+            counts_by_time = dict(zip(selected_times, selected_counts, strict=True))
             durations[year_index] = [
                 counts_by_time.get(time, 0) for time in representative_times.data
             ]
@@ -171,7 +171,7 @@ class NetSurvivalLimitConstraint(GenericConstraint):
         )
 
     @staticmethod
-    def _get_winter_start_storage_time(model_constructor, year):
+    def _get_start_storage_time(model_constructor, year):
         """Return the storage time step at the configured winter start hour."""
 
         time_steps = model_constructor.time_steps

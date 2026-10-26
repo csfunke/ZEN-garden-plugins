@@ -199,8 +199,18 @@ class NetImportConstraint(GenericConstraint):
         term_carrier_export = model_constructor.optimization_model.variables[
             "flow_export"
         ].to_linexpr()
-        # sum up over all operation time steps per year
-        time_step_duration = cls.get_year_time_step_duration_array(model_constructor)
+        # Sum the flows over the configured time frame in each modeled year.
+        year_time_step_duration = cls.get_year_time_step_duration_array(
+            model_constructor
+        )
+        representative_times = (
+            model_constructor.optimization_model.parameters.demand.coords[
+                "set_time_steps_operation"
+            ]
+        )
+        time_step_duration = cls._get_selected_representative_durations(
+            model_constructor, representative_times, year_time_step_duration
+        )
         term_flow_transport_in = (
             term_flow_transport_in.assign_coords(time_step_duration.coords)
             * time_step_duration
@@ -254,4 +264,56 @@ class NetImportConstraint(GenericConstraint):
         )
         cls.add_constraint(
             model_constructor, "constraint_transport_limit_net", constraints_net
+        )
+
+    @staticmethod
+    def _get_selected_representative_durations(
+        model_constructor, representative_times, year_time_step_duration
+    ):
+        """Return representative-hour durations within the configured time frame."""
+        sequence_time_steps = model_constructor.time_steps.sequence_time_steps_operation
+        sequence_years = model_constructor.time_steps.sequence_time_steps_yearly
+        if sequence_time_steps is None or sequence_years is None:
+            raise RuntimeError(
+                "Operational time-step and yearly sequences are required to apply "
+                "import and export limits to a selected time frame."
+            )
+
+        config = model_constructor.model_schema.config.plugins[
+            "import_and_export_limits"
+        ]
+        start_hour = config["start_hour"]
+        end_hour = config["end_hour"]
+        sequence_time_steps = np.asarray(sequence_time_steps)
+        sequence_years = np.asarray(sequence_years)
+        years = year_time_step_duration.coords["set_years"]
+        operation_time_dimension = representative_times.dims[0]
+        durations = np.zeros((len(years), len(representative_times)), dtype=float)
+
+        for year_index, year in enumerate(years.data):
+            year_sequence = sequence_time_steps[sequence_years == year]
+            hours = np.arange(len(year_sequence))
+            if len(hours) != 8760:
+                raise ValueError(
+                    f"Year {year} has {len(hours)} operational hours; expected 8760."
+                )
+            if start_hour <= end_hour:
+                selected_hours = (hours >= start_hour) & (hours < end_hour)
+            else:
+                selected_hours = (hours >= start_hour) | (hours < end_hour)
+            selected_times, selected_counts = np.unique(
+                year_sequence[selected_hours], return_counts=True
+            )
+            counts_by_time = dict(zip(selected_times, selected_counts, strict=True))
+            durations[year_index] = [
+                counts_by_time.get(time, 0) for time in representative_times.data
+            ]
+
+        return xr.DataArray(
+            durations,
+            dims=["set_years", operation_time_dimension],
+            coords={
+                "set_years": years,
+                operation_time_dimension: representative_times,
+            },
         )
