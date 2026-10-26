@@ -4,7 +4,7 @@ from linopy import merge
 from zen_garden.model.component_types.constraint import GenericConstraint
 
 
-class DomesticPotentialRequirementConstraint(GenericConstraint):
+class NetSurvivalLimitConstraint(GenericConstraint):
     """Ensure winter generation potential covers domestic demand."""
 
     @classmethod
@@ -116,7 +116,7 @@ class DomesticPotentialRequirementConstraint(GenericConstraint):
         rhs = (demand - winter_limit - backup_potential).where(active_constraint)
         cls.add_constraint(
             model_constructor,
-            "constraint_domestic_potential_requirement",
+            "constraint_net_survival_limit",
             lhs >= rhs,
         )
 
@@ -133,9 +133,7 @@ class DomesticPotentialRequirementConstraint(GenericConstraint):
         sequence_time_steps = model_constructor.time_steps.sequence_time_steps_operation
         sequence_years = model_constructor.time_steps.sequence_time_steps_yearly
         operation_time_dimension = representative_times.dims[0]
-        config = model_constructor.model_schema.config.plugins[
-            "domestic_potential_requirements"
-        ]
+        config = model_constructor.model_schema.config.plugins["net_survival_limit"]
         start_hour = config["start_hour"]
         end_hour = config["end_hour"]
 
@@ -185,9 +183,7 @@ class DomesticPotentialRequirementConstraint(GenericConstraint):
         year_positions = np.flatnonzero(np.asarray(sequence_years) == year)
         if not len(year_positions):
             raise ValueError(f"No operational hours found for year {year}.")
-        config = model_constructor.model_schema.config.plugins[
-            "domestic_potential_requirements"
-        ]
+        config = model_constructor.model_schema.config.plugins["net_survival_limit"]
         start_hour = config["start_hour"]
         if not 0 <= start_hour < len(year_positions):
             raise ValueError(
