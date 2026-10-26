@@ -5,22 +5,28 @@ from zen_garden.model.component_types.constraint import GenericConstraint
 from zen_garden.model.registries.multi_index_helper import MultiIndexHelper
 
 
-class NetTransportLimitConstraint(GenericConstraint):
+class NetImportConstraint(GenericConstraint):
 
     @classmethod
     def build(cls, model_constructor):
-        """
-        Limit of the transport flow of carrier.
+        """Limit inbound, outbound, and net carrier imports for each node.
 
         .. math::
-            \\sum_{t\\in\\mathcal{T}}\\tau_t\\sum_{j\\in\\mathcal{J}}
-            \\sum_{e\\in\\underline{\\mathcal{E}}}(F_{j,e,t}-F^\\mathrm{l}_{j,e,t})
+            \\sum_{t\\in\\mathcal{T}}\\tau_t\\left(
+            \\sum_{j\\in\\mathcal{J}}\\sum_{e\\in\\underline{\\mathcal{E}}}
+            (F_{j,e,t}-F^\\mathrm{l}_{j,e,t}) + F^\\mathrm{imp}_{c,n,t}
+            \\right)
             \\leq b^\\mathrm{in}_{c,n,y} \n
-            \\sum_{t\\in\\mathcal{T}}\\tau_t\\sum_{j\\in\\mathcal{J}}
-            \\sum_{e'\\in\\overline{\\mathcal{E}}}F_{j,e',t})
+
+            \\sum_{t\\in\\mathcal{T}}\\tau_t\\left(
+            \\sum_{j\\in\\mathcal{J}}\\sum_{e'\\in\\overline{\\mathcal{E}}}
+            F_{j,e',t} + F^\\mathrm{exp}_{c,n,t}
+            \\right)
             \\leq b^\\mathrm{out}_{c,n,y}
-        :math:`F_{j,e,t}`: transported flow of carrier :math:`c` on ingoing
-        edges :math:`e` minues the losses :math:`F^\\mathrm{l}_{j,e,t})` of all
+
+        The net limit applies to total inbound flow minus total outbound flow.
+        :math:`F_{j,e,t}` is the transported flow of carrier :math:`c` on ingoing
+        edges :math:`e` minus the losses :math:`F^\\mathrm{l}_{j,e,t}` of all
         transport technologies :math:`j` at time step :math:`t`\n
         :math:`F_{j,e',t}`: transported flow of carrier :math:`c` on outgoing
         edges :math:`e'` at time step :math:`t`\n
@@ -186,15 +192,13 @@ class NetTransportLimitConstraint(GenericConstraint):
                 .to_linexpr()
             )
 
-        # get carrier inflows
+        # Direct carrier imports and exports at each node.
         term_carrier_import = model_constructor.optimization_model.variables[
             "flow_import"
         ].to_linexpr()
         term_carrier_export = model_constructor.optimization_model.variables[
             "flow_export"
         ].to_linexpr()
-
-
         # sum up over all operation time steps per year
         time_step_duration = cls.get_year_time_step_duration_array(model_constructor)
         term_flow_transport_in = (
@@ -214,12 +218,9 @@ class NetTransportLimitConstraint(GenericConstraint):
             * time_step_duration
         ).sum("set_time_steps_operation")
 
-        
-        term_flow_import_total = term_flow_transport_in - term_carrier_import
-        term_flow_export_total = term_flow_transport_out - term_carrier_export
+        term_flow_import_total = term_flow_transport_in + term_carrier_import
+        term_flow_export_total = term_flow_transport_out + term_carrier_export
         term_flow_import_net = term_flow_import_total - term_flow_export_total
-
-
 
         # transport limits
         transport_limit_in = (

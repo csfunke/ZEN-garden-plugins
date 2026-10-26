@@ -23,7 +23,7 @@ dependencies = [
 
 [project.entry-points."zen_garden.plugins"]
 plugin_template = "zen_garden_plugins.plugin_template.plugin"
-domestic_production_requirements = "zen_garden_plugins.domestic_production_requirements.plugin"
+import_and_export_limits = "zen_garden_plugins.import_and_export_limits.plugin"
 domestic_potential_requirements = "zen_garden_plugins.domestic_potential_requirements.plugin"
 reoccurring_storage_periodicity = "zen_garden_plugins.reoccurring_storage_periodicity.plugin"
 
