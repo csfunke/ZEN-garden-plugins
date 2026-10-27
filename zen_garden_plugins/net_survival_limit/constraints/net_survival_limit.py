@@ -24,8 +24,12 @@ class NetSurvivalLimitConstraint(GenericConstraint):
         nodes = parameters.demand.coords["set_nodes"]
         conversion_technologies = optimization_model.sets["set_conversion_technologies"]
         storage_technologies = optimization_model.sets["set_storage_technologies"]
+        include_endogenous_demand = model_constructor.model_schema.config.plugins[
+            "net_survival_limit"
+        ]["include_endogenous_demand"]
         potential_terms = []
         demand_terms = []
+        endogenous_demand_terms = []
         time_step_year = xr.DataArray(
             [
                 model_constructor.time_steps.convert_time_step_operation2year(t)
@@ -38,6 +42,11 @@ class NetSurvivalLimitConstraint(GenericConstraint):
                 technology
                 for technology in conversion_technologies
                 if carrier in optimization_model.sets["set_output_carriers"][technology]
+            ]
+            input_technologies = [
+                technology
+                for technology in conversion_technologies
+                if carrier in optimization_model.sets["set_input_carriers"][technology]
             ]
             storage_for_carrier = [
                 technology
@@ -96,6 +105,17 @@ class NetSurvivalLimitConstraint(GenericConstraint):
                 inflow_potential = capacity_potential * 0
                 initial_storage = capacity_potential * 0
 
+            if include_endogenous_demand and input_technologies:
+                endogenous_demand = variables["flow_conversion_input"].loc[
+                    input_technologies, carrier, nodes, :
+                ]
+                endogenous_demand = endogenous_demand.sum("set_conversion_technologies")
+                endogenous_demand = (endogenous_demand * winter_duration).sum(
+                    "set_time_steps_operation"
+                )
+            else:
+                endogenous_demand = capacity_potential * 0
+
             potential_terms.append(
                 (capacity_potential + inflow_potential + initial_storage).expand_dims(
                     set_carriers=[carrier]
@@ -106,9 +126,14 @@ class NetSurvivalLimitConstraint(GenericConstraint):
                 .sum("set_time_steps_operation")
                 .expand_dims(set_carriers=[carrier])
             )
+            endogenous_demand_terms.append(
+                endogenous_demand.expand_dims(set_carriers=[carrier])
+            )
 
         potential = merge(potential_terms, dim="set_carriers")
         demand = xr.concat(demand_terms, dim="set_carriers")
+        if include_endogenous_demand:
+            demand = merge(endogenous_demand_terms, dim="set_carriers") + demand
         winter_limit = parameters.winter_limit
         backup_potential = parameters.backup_potential
         active_constraint = np.isfinite(winter_limit) & np.isfinite(backup_potential)

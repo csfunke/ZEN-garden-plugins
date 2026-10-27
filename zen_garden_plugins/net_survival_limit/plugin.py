@@ -5,6 +5,8 @@ Write functions that subscribe to an event in ZEN-garden. These functions are ex
 when ZEN-garden reaches the trigger to the respective event.
 """
 
+from typing import Any, cast
+
 from zen_garden import (  # type: ignore[import-untyped]
     ConfigBase,
     Event,
@@ -30,6 +32,7 @@ class Config(ConfigBase):
 
     start_hour: int = 8016
     end_hour: int = 1416
+    include_endogenous_demand: bool = True
 
 
 # config: dict[str, Any] = {"start_hour": 8016,
@@ -39,12 +42,11 @@ class Config(ConfigBase):
 # Choose the event that will trigger the function call
 @EventPublisher.register(Event.after_model_schema_creation)
 def add_net_survival_limit(model_schema: ModelSchema) -> None:
+    carrier = cast(Any, model_schema.element_type_classes["Carrier"])
 
-    model_schema.element_type_classes["Carrier"].own_parameters.append(WinterLimit)
-    model_schema.element_type_classes["Carrier"].parameters.append(WinterLimit)
+    carrier.own_parameters.append(WinterLimit)
+    carrier.parameters.append(WinterLimit)
 
-    model_schema.element_type_classes["Carrier"].own_parameters.append(BackupPotential)
-    model_schema.element_type_classes["Carrier"].parameters.append(BackupPotential)
-    model_schema.element_type_classes["Carrier"].constraints.append(
-        NetSurvivalLimitConstraint
-    )
+    carrier.own_parameters.append(BackupPotential)
+    carrier.parameters.append(BackupPotential)
+    carrier.constraints.append(NetSurvivalLimitConstraint)
