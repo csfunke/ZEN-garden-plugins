@@ -107,9 +107,11 @@ class NetSurvivalLimitConstraint(GenericConstraint):
 
             if include_endogenous_demand and input_technologies:
                 endogenous_demand = variables["flow_conversion_input"].loc[
-                    input_technologies, carrier, nodes, :
+                    input_technologies, [carrier], nodes, :
                 ]
-                endogenous_demand = endogenous_demand.sum("set_conversion_technologies")
+                endogenous_demand = endogenous_demand.sum(
+                    ["set_conversion_technologies", "set_input_carriers"]
+                )
                 endogenous_demand = (endogenous_demand * winter_duration).sum(
                     "set_time_steps_operation"
                 )
