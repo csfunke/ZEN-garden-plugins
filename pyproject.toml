@@ -19,8 +19,9 @@ authors = [
 dependencies = [
     "zen_garden>=3.3.1",
     "numpy",
-    "pandas",
+    "pandas>=3.1.0",
     "PyYAML",
+    "pytest",
 ]
 
 [project.scripts]
