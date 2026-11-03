@@ -2,6 +2,7 @@ raw_data/
 test.py
 tests/**/outputs/
 
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -1,0 +1,75 @@
+test_cf_net_import:
+  scenario_:
+    capacity:
+    - index:
+      - natural_gas_turbine
+      - power
+      - CH
+      - 0
+      value: 0
+    - index:
+      - natural_gas_turbine
+      - power
+      - CH
+      - 2
+      value: 0
+    - index:
+      - natural_gas_turbine
+      - power
+      - DE
+      - 0
+      value: 175
+    - index:
+      - natural_gas_turbine
+      - power
+      - DE
+      - 2
+      value: 175
+    flow_transport:
+    - index:
+      - power_line
+      - DE-CH
+      - 0
+      value: 50
+    - index:
+      - power_line
+      - DE-CH
+      - 2
+      value: 75
+  scenario_export_limit:
+    capacity:
+    - index:
+      - natural_gas_turbine
+      - power
+      - CH
+      - 0
+      value: 42.07
+    - index:
+      - natural_gas_turbine
+      - power
+      - CH
+      - 2
+      value: 42.07
+    - index:
+      - natural_gas_turbine
+      - power
+      - DE
+      - 0
+      value: 132.9
+    - index:
+      - natural_gas_turbine
+      - power
+      - DE
+      - 2
+      value: 139.9
+    flow_transport:
+    - index:
+      - power_line
+      - DE-CH
+      - 0
+      value: 7.93
+    - index:
+      - power_line
+      - DE-CH
+      - 2
+      value: 32.93
