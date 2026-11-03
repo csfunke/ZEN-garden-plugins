@@ -17,8 +17,14 @@ authors = [
   { name="Jacob Mannhardt"},
 ]
 dependencies = [
-    "zen_garden>=3.3.1"
+    "zen_garden>=3.3.1",
+    "numpy",
+    "pandas",
+    "PyYAML",
 ]
+
+[project.scripts]
+zen-operation = "zen_garden_plugins.operation_scenarios.plugin:create_zen_operation_cli"
 
 
 [project.entry-points."zen_garden.plugins"]
