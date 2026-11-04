@@ -19,7 +19,7 @@ authors = [
 dependencies = [
     "zen_garden>=3.3.1",
     "numpy",
-    "pandas>=3.1.0",
+    "pandas",
     "PyYAML",
     "pytest",
 ]
