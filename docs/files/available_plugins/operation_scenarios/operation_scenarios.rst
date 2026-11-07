@@ -117,9 +117,10 @@ Running from Python
 Generated datasets and results
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For operational input ``operational_dataset`` and planning scenario
-``scenario_name``, the generated input dataset and result folder are named
-``operational_dataset_scenario_name__operation``.
+For operational input ``operational_dataset``, planning-results directory
+``planning_dataset``, and planning scenario ``scenario_name``, the generated
+input dataset and result folder are named
+``operational_dataset--planning_dataset-scenario_name__operation``.
 
 The wrapper replaces an existing generated input dataset with the same name.
 Use ``--delete_data`` when the copied inputs are not needed after execution.

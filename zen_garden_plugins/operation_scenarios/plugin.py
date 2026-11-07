@@ -92,11 +92,20 @@ def validate_inputs(
     )
 
 
-def _operation_dataset_path(dataset: Path, scenario: str) -> Path:
+def _operation_dataset_path(
+    dataset: Path, planning_results: Path, scenario: str
+) -> Path:
     """Build and validate the generated sibling dataset path."""
     if Path(scenario).name != scenario or scenario in {".", ".."}:
         raise ValueError(f"Unsafe scenario name in results: {scenario!r}")
-    path = dataset.parent / f"{dataset.name}_{scenario}__operation"
+    planning_dataset = planning_results.name
+    if not planning_dataset:
+        raise ValueError(
+            f"Planning results must identify a dataset directory: {planning_results}"
+        )
+    path = dataset.parent / (
+        f"{dataset.name}--{planning_dataset}-{scenario}__operation"
+    )
     if path.parent.resolve() != dataset.parent.resolve():
         raise ValueError(f"Unsafe operational dataset path: {path}")
     return path
@@ -177,7 +186,7 @@ def operation_scenarios(
         job_index,
     )
 
-    dataset_op = _operation_dataset_path(dataset_path, selected_scenario)
+    dataset_op = _operation_dataset_path(dataset_path, results_path, selected_scenario)
     try:
         prepare_operational_dataset(
             dataset_path,
