@@ -61,22 +61,31 @@ def test_historical_operation_cases(
 ) -> None:
     """Preserve the planning and operation results of the legacy wrapper cases."""
     workspace, fixture_root = operation_workspace
-    dataset = workspace / dataset_name
+    planning_dataset = workspace / f"planning_{dataset_name}"
+    operational_dataset = workspace / f"operational_{dataset_name}"
     outputs = workspace / "outputs"
-    shutil.copytree(fixture_root / dataset_name, dataset)
+    shutil.copytree(fixture_root / dataset_name, planning_dataset)
+    shutil.copytree(fixture_root / dataset_name, operational_dataset)
+    original_system = (operational_dataset / "system.yaml").read_text(encoding="utf-8")
 
-    run(config=workspace / "config.yaml", dataset=dataset, folder_output=outputs)
+    run(
+        config=workspace / "config.yaml",
+        dataset=planning_dataset,
+        folder_output=outputs,
+    )
     plugin.operation_scenarios(
         config=workspace / "config.yaml",
-        dataset=dataset,
+        dataset=operational_dataset,
+        planning_results=outputs / planning_dataset.name,
+        planning_scenario="none",
         folder_output=outputs,
         delete_data=True,
     )
 
-    operation_name = f"{dataset_name}_none__operation"
+    operation_name = f"{operational_dataset.name}_none__operation"
     compare_historical_results(
         f"{dataset_name}_capacity",
-        Results(outputs / dataset_name),
+        Results(outputs / planning_dataset.name),
         fixture_root,
     )
     compare_historical_results(
@@ -85,27 +94,32 @@ def test_historical_operation_cases(
         fixture_root,
     )
     assert not (workspace / operation_name).exists()
+    assert (operational_dataset / "system.yaml").read_text(encoding="utf-8") == (
+        original_system
+    )
 
 
-def test_copy_dataset_installs_only_yaml_operational_scenarios(
+@pytest.mark.parametrize("scenario_name", ["scenarios.yaml", "scenarios.json"])
+def test_copy_dataset_preserves_operational_scenarios(
     operation_workspace: tuple[Path, Path],
+    scenario_name: str,
 ) -> None:
-    """An operational copy drops planning scenarios and canonicalizes YAML."""
+    """An operational copy preserves the dataset's scenario definition."""
     workspace, fixture_root = operation_workspace
     source = workspace / "test_1j"
     destination = workspace / "test_1j_operation"
     shutil.copytree(fixture_root / "test_1j", source)
-    (source / "scenarios.yaml").write_text("planning: {}\n", encoding="utf-8")
-    scenarios_op = source / "scenarios_op.yml"
-    scenarios_op.write_text("full_year:\n  system: {}\n", encoding="utf-8")
+    scenario_path = source / scenario_name
+    scenario_content = (
+        '{"full_year": {"system": {}}}\n'
+        if scenario_path.suffix == ".json"
+        else "full_year:\n  system: {}\n"
+    )
+    scenario_path.write_text(scenario_content, encoding="utf-8")
 
-    utils.copy_dataset(source, destination, scenarios_op)
+    utils.copy_dataset(source, destination)
 
-    assert yaml.safe_load((destination / "scenarios.yaml").read_text()) == {
-        "full_year": {"system": {}}
-    }
-    assert not (destination / "scenarios.yml").exists()
-    assert not (destination / "scenarios.json").exists()
+    assert (destination / scenario_name).read_text(encoding="utf-8") == scenario_content
 
 
 def test_json_configuration_is_rejected(
@@ -121,21 +135,38 @@ def test_json_configuration_is_rejected(
     json_config.write_text("{}", encoding="utf-8")
 
     with pytest.raises(ValueError, match="must be a YAML file"):
-        plugin.validate_inputs(dataset, json_config, outputs.parent, None, None)
+        plugin.validate_inputs(
+            dataset, outputs, "none", json_config, outputs.parent, None
+        )
 
 
-def test_load_scenarios_applies_job_indices(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Planning scenarios are selected in result order."""
+def test_validate_inputs_rejects_unknown_planning_scenario(
+    operation_workspace: tuple[Path, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Planning scenarios are selected by exact result name."""
+    workspace, fixture_root = operation_workspace
+    dataset = workspace / "operational_input"
+    results = workspace / "planning_results"
+    shutil.copytree(fixture_root / "test_1j", dataset)
+    results.mkdir()
 
     class FakeResults:
         def __init__(self, _path: Path) -> None:
             self.scenarios = {"scenario_a": object(), "scenario_b": object()}
 
     monkeypatch.setattr(plugin, "Results", FakeResults)
-    assert plugin.load_scenarios(Path("unused"), [1, 0]) == [
-        "scenario_b",
-        "scenario_a",
-    ]
+    with pytest.raises(
+        ValueError,
+        match="Planning scenario 'missing'.*'scenario_a'.*'scenario_b'",
+    ):
+        plugin.validate_inputs(
+            dataset,
+            results,
+            "missing",
+            workspace / "config.yaml",
+            workspace / "outputs",
+            None,
+        )
 
 
 def test_delete_data_cleans_generated_dataset_after_failure(
@@ -146,9 +177,15 @@ def test_delete_data_cleans_generated_dataset_after_failure(
     dataset = workspace / "test_1j"
     shutil.copytree(fixture_root / "test_1j", dataset)
     (workspace / "outputs" / dataset.name).mkdir(parents=True)
+    planning_results = workspace / "planning_results"
+    planning_results.mkdir()
     generated = workspace / "test_1j_none__operation"
 
-    monkeypatch.setattr(plugin, "load_scenarios", lambda *_args: ["none"])
+    class FakeResults:
+        def __init__(self, _path: Path) -> None:
+            self.scenarios = {"none": object()}
+
+    monkeypatch.setattr(plugin, "Results", FakeResults)
 
     def fake_prepare(*_args: Any, **_kwargs: Any) -> None:
         generated.mkdir()
@@ -162,6 +199,8 @@ def test_delete_data_cleans_generated_dataset_after_failure(
     with pytest.raises(RuntimeError, match="deliberate failure"):
         plugin.operation_scenarios(
             dataset=dataset,
+            planning_results=planning_results,
+            planning_scenario="none",
             config=workspace / "config.yaml",
             folder_output=workspace / "outputs",
             delete_data=True,
@@ -182,12 +221,14 @@ def test_cli_forwards_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
             "zen-operation",
             "--dataset",
             "dataset",
+            "--planning_results",
+            "planning_results",
+            "--planning_scenario",
+            "planning_case",
             "--config",
             "config.yaml",
             "--job_index",
             "2,0",
-            "--scenarios_op",
-            "scenarios_op.yaml",
             "--delete_data",
         ],
     )
@@ -196,11 +237,31 @@ def test_cli_forwards_arguments(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert received == {
         "dataset": "dataset",
+        "planning_results": "planning_results",
+        "planning_scenario": "planning_case",
         "config": "config.yaml",
         "folder_output": "./outputs",
         "job_index": [2, 0],
-        "scenarios_op": "scenarios_op.yaml",
         "delete_data": True,
+    }
+
+
+def test_run_operational_simulation_forwards_job_indices(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Operational job indices are passed to the standard ZEN-garden runner."""
+    received: dict[str, Any] = {}
+    monkeypatch.setattr(plugin, "run", lambda **kwargs: received.update(kwargs))
+
+    plugin.run_operational_simulation(
+        Path("dataset"), Path("config.yaml"), Path("outputs"), [2, 0]
+    )
+
+    assert received == {
+        "dataset": Path("dataset"),
+        "config": Path("config.yaml"),
+        "folder_output": Path("outputs"),
+        "job_index": [2, 0],
     }
 
 

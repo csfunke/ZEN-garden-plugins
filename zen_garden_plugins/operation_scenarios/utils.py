@@ -43,11 +43,6 @@ def validate_yaml_dataset(dataset: Path) -> None:
     """Ensure required dataset definitions use the v3 YAML format."""
     find_yaml_file(dataset, "system")
     find_yaml_file(dataset / "energy_system", "base_units")
-    legacy_scenarios = dataset / "scenarios.json"
-    if legacy_scenarios.exists():
-        raise ValueError(
-            f"JSON input is not supported; convert {legacy_scenarios} to YAML"
-        )
     legacy_attributes = list(dataset.rglob("attributes.json"))
     if legacy_attributes:
         raise ValueError(
@@ -69,20 +64,12 @@ def modify_yaml(file_path: Path, changes: dict[str, Any]) -> None:
 def copy_dataset(
     old_dataset: Path,
     new_dataset: Path,
-    scenarios: Path | None = None,
 ) -> None:
-    """Copy a complete dataset and install only operational scenarios."""
+    """Copy a complete operational dataset without changing its scenarios."""
     validate_yaml_dataset(old_dataset)
     if new_dataset.exists():
         shutil.rmtree(new_dataset)
     shutil.copytree(old_dataset, new_dataset)
-    for name in ("scenarios.yaml", "scenarios.yml", "scenarios.json"):
-        inherited_scenarios = new_dataset / name
-        if inherited_scenarios.exists():
-            inherited_scenarios.unlink()
-    if scenarios is not None:
-        load_yaml_mapping(scenarios)
-        shutil.copy2(scenarios, new_dataset / "scenarios.yaml")
 
 
 def load_results(out_dir: Path, scenario: str) -> dict[str, Any]:

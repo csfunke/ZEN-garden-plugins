@@ -4,9 +4,10 @@ Operation-only scenarios
 ------------------------
 
 The ``operation_scenarios`` extension tests completed capacity-expansion
-solutions in operation-only ZEN-garden models. It copies each selected planning
-solution's capacity additions into ``capacity_existing`` inputs, disables new
-investment, and optionally applies a second set of operational scenarios.
+solutions in operation-only ZEN-garden models. It copies one selected planning
+solution's capacity additions into ``capacity_existing`` inputs of a separate
+operational dataset and disables new investment. Operational scenarios are
+defined by that dataset's existing scenario file.
 
 Although the implementation lives in a module named ``plugin.py`` for package
 consistency, this extension is a standalone command. Do **not** add it to the
@@ -26,8 +27,9 @@ This installs the ``zen-operation`` command.
 Input files
 ^^^^^^^^^^^
 
-The wrapper supports ZEN-garden v3 YAML datasets. JSON configuration,
-attributes, and scenario files are rejected. A typical layout is:
+The wrapper supports ZEN-garden v3 datasets. Configuration and attribute files
+must use YAML; scenario definitions may use ``scenarios.yaml``,
+``scenarios.yml``, or ``scenarios.json``. A typical layout is:
 
 .. code-block:: text
 
@@ -39,7 +41,7 @@ attributes, and scenario files are rejected. A typical layout is:
        |   `-- base_units.yaml
        |-- set_carriers/
        |-- set_technologies/
-       |-- scenarios_op.yaml
+       |-- scenarios.yaml
        `-- system.yaml
 
 An operational scenario uses the regular ZEN-garden scenario syntax. For
@@ -55,36 +57,42 @@ example, this runs the operation model without time-series aggregation:
 Running from the command line
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Run the planning model first, then invoke the wrapper against its results:
+Run the planning model first, then invoke the wrapper with the exact result
+folder, planning scenario name, and operational input dataset:
 
 .. code-block:: shell
 
-   zen-garden --config config.yaml --dataset dataset
-   zen-operation --config config.yaml --dataset dataset \
-       --scenarios_op scenarios_op.yaml
+   zen-garden --config config.yaml --dataset planning_dataset
+   zen-operation --config config.yaml --dataset operational_dataset \
+       --planning_results outputs/planning_dataset \
+       --planning_scenario planning_case
 
 The command accepts:
 
 ``--dataset``
-   Required path to the original planning dataset.
+   Required path to the operational input dataset. This dataset is copied and
+   remains unchanged.
+
+``--planning_results``
+   Required path to the completed capacity-expansion results directory.
+
+``--planning_scenario``
+   Required exact name of the planning-results scenario whose capacity
+   additions should be used.
 
 ``--config``
    YAML configuration for operation-only runs. Defaults to ``config.yaml``.
 
 ``--folder_output``
-   Directory containing planning results and receiving operation results.
-   Defaults to ``outputs``.
+   Directory receiving operation results. Defaults to ``outputs``.
 
 ``--job_index``
-   Comma-separated planning-scenario indices. All scenarios run when omitted.
+   Comma-separated operational-scenario indices from the input dataset's
+   scenario definition. All operational scenarios run when omitted.
 
 ``--job_index_var``
    Environment variable used when ``--job_index`` is omitted. Defaults to
    ``SLURM_ARRAY_TASK_ID``.
-
-``--scenarios_op``
-   Operational-scenario YAML file. Relative paths are resolved from the
-   planning dataset.
 
 ``--delete_data``
    Permanently delete each generated operation-only input dataset after its
@@ -98,20 +106,20 @@ Running from Python
    from zen_garden import run
    from zen_garden_plugins.operation_scenarios import operation_scenarios
 
-   run(config="config.yaml", dataset="dataset")
+   run(config="config.yaml", dataset="planning_dataset")
    operation_scenarios(
        config="config.yaml",
-       dataset="dataset",
-       scenarios_op="scenarios_op.yaml",
+       dataset="operational_dataset",
+       planning_results="outputs/planning_dataset",
+       planning_scenario="planning_case",
    )
 
 Generated datasets and results
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For planning dataset ``dataset`` and planning scenario ``scenario_name``, the
-generated input dataset and result folder are named
-``dataset_scenario_name__operation``. A planning run without explicit
-scenarios uses ``none``, yielding ``dataset_none__operation``.
+For operational input ``operational_dataset`` and planning scenario
+``scenario_name``, the generated input dataset and result folder are named
+``operational_dataset_scenario_name__operation``.
 
 The wrapper replaces an existing generated input dataset with the same name.
 Use ``--delete_data`` when the copied inputs are not needed after execution.

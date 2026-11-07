@@ -30,28 +30,31 @@ def _require_yaml_file(path: Path, description: str) -> Path:
 
 def validate_inputs(
     dataset: Path | str,
+    planning_results: Path | str,
+    planning_scenario: str,
     config: Path | str,
     folder_output: Path | str | None,
     job_index: Iterable[int] | None,
-    scenarios_op: Path | str | None,
-) -> tuple[Path, Path, Path, list[int] | None, Path | None]:
+) -> tuple[Path, Path, str, Path, Path, list[int] | None]:
     """Validate and normalize wrapper inputs.
 
     Args:
-        dataset: Capacity-expansion dataset directory.
+        dataset: Operational input dataset directory.
+        planning_results: Completed capacity-expansion results directory.
+        planning_scenario: Planning scenario whose capacities should be used.
         config: ZEN-garden YAML configuration file.
-        folder_output: Directory containing the completed planning results.
-        job_index: Optional planning-scenario indices to process.
-        scenarios_op: Optional operational-scenario YAML file.
+        folder_output: Directory receiving the operation-only results.
+        job_index: Optional operational-scenario indices to process.
 
     Returns:
-        Normalized dataset, config, output directory, job indices, and
-        operational-scenario file.
+        Normalized dataset, planning results, planning scenario, config, output
+        directory, and operational-scenario indices.
 
     Raises:
         FileNotFoundError: If an input or the planning results do not exist.
         TypeError: If a job index is not an integer.
-        ValueError: If a required configuration file is not YAML.
+        ValueError: If a required configuration file is not YAML or the planning
+            scenario does not exist.
     """
     dataset_path = Path(dataset).resolve()
     if not dataset_path.is_dir():
@@ -60,11 +63,16 @@ def validate_inputs(
 
     config_path = _require_yaml_file(Path(config).resolve(), "Config")
     output_path = Path(folder_output or "./outputs").resolve()
-    results_path = output_path / dataset_path.name
+
+    results_path = Path(planning_results).resolve()
     if not results_path.is_dir():
-        raise FileNotFoundError(
-            f"Results for dataset {dataset_path.name!r} do not exist in "
-            f"{output_path}."
+        raise FileNotFoundError(f"Planning results not found: {results_path}")
+    available_scenarios = list(Results(results_path).scenarios)
+    if planning_scenario not in available_scenarios:
+        available = ", ".join(repr(scenario) for scenario in available_scenarios)
+        raise ValueError(
+            f"Planning scenario {planning_scenario!r} not found in {results_path}. "
+            f"Available scenarios: {available or 'none'}"
         )
 
     if job_index is None:
@@ -74,30 +82,14 @@ def validate_inputs(
         if not all(isinstance(index, int) for index in job_indices):
             raise TypeError("job_index must be an iterable of integers")
 
-    scenario_path = None
-    if scenarios_op is not None:
-        candidate = Path(scenarios_op)
-        if not candidate.is_absolute():
-            candidate = dataset_path / candidate
-        scenario_path = _require_yaml_file(candidate.resolve(), "Operational scenarios")
-        utils.load_yaml_mapping(scenario_path)
-
-    return dataset_path, config_path, output_path, job_indices, scenario_path
-
-
-def load_scenarios(results_path: Path, job_index: list[int] | None) -> list[str]:
-    """Return selected planning-scenario names from completed results."""
-    scenarios = list(Results(results_path).scenarios)
-    if not scenarios:
-        raise ValueError("No scenarios found in simulation results")
-    if job_index:
-        try:
-            return [scenarios[index] for index in job_index]
-        except IndexError as exc:
-            raise IndexError(
-                f"job_index contains an index outside 0..{len(scenarios) - 1}"
-            ) from exc
-    return scenarios
+    return (
+        dataset_path,
+        results_path,
+        planning_scenario,
+        config_path,
+        output_path,
+        job_indices,
+    )
 
 
 def _operation_dataset_path(dataset: Path, scenario: str) -> Path:
@@ -115,20 +107,16 @@ def prepare_operational_dataset(
     dataset_op: Path,
     planning_results: Path,
     scenario: str,
-    scenarios_op: Path | None,
 ) -> None:
     """Create an operation-only dataset for one planning scenario."""
-    utils.copy_dataset(dataset, dataset_op, scenarios_op)
+    utils.copy_dataset(dataset, dataset_op)
     utils.capacity_addition_to_existing_capacity(
         planning_results, dataset, dataset_op, scenario
     )
     system_path = utils.find_yaml_file(dataset_op, "system")
     utils.modify_yaml(
         system_path,
-        {
-            "allow_investment": False,
-            "conduct_scenario_analysis": scenarios_op is not None,
-        },
+        {"allow_investment": False},
     )
 
 
@@ -136,59 +124,71 @@ def run_operational_simulation(
     dataset_op: Path,
     config: Path,
     folder_output: Path,
+    job_index: list[int] | None,
 ) -> None:
     """Run ZEN-garden for a prepared operation-only dataset."""
-    run(dataset=dataset_op, config=config, folder_output=folder_output)
+    run(
+        dataset=dataset_op,
+        config=config,
+        folder_output=folder_output,
+        job_index=job_index,
+    )
 
 
 def operation_scenarios(
     dataset: Path | str,
+    planning_results: Path | str,
+    planning_scenario: str,
     config: Path | str = Path("./config.yaml"),
     folder_output: Path | str = Path("./outputs"),
     job_index: Iterable[int] | None = None,
-    scenarios_op: Path | str | None = None,
     delete_data: bool = False,
 ) -> None:
     """Run operation-only models derived from capacity-expansion results.
 
-    For every selected planning scenario, the wrapper creates a sibling copy
-    of the input dataset, transfers optimized capacity additions to existing
-    capacity files, disables investment, and runs ZEN-garden again.
+    The wrapper creates a sibling copy of the operational input dataset,
+    transfers optimized capacity additions from the selected planning scenario
+    to existing-capacity files, disables investment, and runs ZEN-garden again.
 
     Args:
-        dataset: Dataset used for the completed capacity-expansion run.
+        dataset: Operational input dataset to copy and augment.
+        planning_results: Completed capacity-expansion results directory.
+        planning_scenario: Planning scenario whose capacities should be used.
         config: YAML configuration used for the operation-only run.
-        folder_output: Directory containing planning results and receiving
-            operation-only results.
-        job_index: Optional planning-scenario indices. All are run by default.
-        scenarios_op: Optional YAML file containing operational scenarios. A
-            relative path is resolved within ``dataset``.
+        folder_output: Directory receiving operation-only results.
+        job_index: Optional operational-scenario indices from the dataset's
+            scenario definition. All are run by default.
         delete_data: Permanently delete generated input datasets after each
             run. Cleanup also occurs when an operational run fails.
     """
     (
         dataset_path,
+        results_path,
+        selected_scenario,
         config_path,
         output_path,
         job_indices,
-        scenario_path,
-    ) = validate_inputs(dataset, config, folder_output, job_index, scenarios_op)
-    planning_results = output_path / dataset_path.name
+    ) = validate_inputs(
+        dataset,
+        planning_results,
+        planning_scenario,
+        config,
+        folder_output,
+        job_index,
+    )
 
-    for scenario in load_scenarios(planning_results, job_indices):
-        dataset_op = _operation_dataset_path(dataset_path, scenario)
-        try:
-            prepare_operational_dataset(
-                dataset_path,
-                dataset_op,
-                planning_results,
-                scenario,
-                scenario_path,
-            )
-            run_operational_simulation(dataset_op, config_path, output_path)
-        finally:
-            if delete_data and dataset_op.exists():
-                shutil.rmtree(dataset_op)
+    dataset_op = _operation_dataset_path(dataset_path, selected_scenario)
+    try:
+        prepare_operational_dataset(
+            dataset_path,
+            dataset_op,
+            results_path,
+            selected_scenario,
+        )
+        run_operational_simulation(dataset_op, config_path, output_path, job_indices)
+    finally:
+        if delete_data and dataset_op.exists():
+            shutil.rmtree(dataset_op)
 
 
 def resolve_job_index(job_index: str | None, job_index_var: str) -> list[int] | None:
@@ -208,25 +208,34 @@ def build_parser() -> argparse.ArgumentParser:
             "capacity-expansion results."
         ),
     )
-    parser.add_argument("--dataset", required=True, help="Planning dataset path.")
+    parser.add_argument(
+        "--dataset", required=True, help="Operational input dataset path."
+    )
+    parser.add_argument(
+        "--planning_results",
+        required=True,
+        help="Completed capacity-expansion results directory.",
+    )
+    parser.add_argument(
+        "--planning_scenario",
+        required=True,
+        help="Planning scenario whose capacities should be used.",
+    )
     parser.add_argument("--config", default="./config.yaml", help="YAML config path.")
     parser.add_argument(
         "--folder_output",
         default="./outputs",
-        help="Planning and operational results directory.",
+        help="Operational results directory.",
     )
     parser.add_argument(
-        "--job_index", default=None, help="Comma-separated planning-scenario indices."
+        "--job_index",
+        default=None,
+        help="Comma-separated operational-scenario indices.",
     )
     parser.add_argument(
         "--job_index_var",
         default="SLURM_ARRAY_TASK_ID",
         help="Environment variable used when --job_index is omitted.",
-    )
-    parser.add_argument(
-        "--scenarios_op",
-        default=None,
-        help="Operational-scenario YAML file, relative to the dataset by default.",
     )
     parser.add_argument(
         "--delete_data",
@@ -246,10 +255,11 @@ def create_zen_operation_cli() -> None:
         parser.error(f"Invalid job index: {exc}")
     operation_scenarios(
         dataset=args.dataset,
+        planning_results=args.planning_results,
+        planning_scenario=args.planning_scenario,
         config=args.config,
         folder_output=args.folder_output,
         job_index=job_index,
-        scenarios_op=args.scenarios_op,
         delete_data=args.delete_data,
     )
 
